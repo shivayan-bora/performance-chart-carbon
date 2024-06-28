@@ -1,0 +1,10 @@
+<div class="flex justify-end p-4">
+  <button (click)="toggleTheme()" class="focus:outline-none transition-transform transform hover:scale-105">
+    @if(!isDarkTheme) {
+    ☀️
+    } @else {
+    🌙
+    }
+  </button>
+</div>
+<div id="chart-container" class="p-4"></div>
