@@ -3,11 +3,17 @@ import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes } from '@carb
 import '@carbon/charts/styles.css';
 import { interval, Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+import * as d3 from 'd3';
+
+interface ChartData {
+  group: string;
+  date: Date;
+  value: number;
+}
 
 @Component({
   selector: 'app-performance-chart',
   standalone: true,
-  imports: [],
   templateUrl: './performance-chart.component.html',
   styleUrls: ['./performance-chart.component.css']
 })
@@ -107,6 +113,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
           };
           this.data.push(formattedLoadData, formattedErrorData, formattedSuccessData);
           this.chart.model.setData(this.data);
+          this.addCustomLineStyles();
           this.addClickListeners();
           console.log('Fetched data:', this.data);
         },
@@ -130,6 +137,26 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
     if (dataPoint) {
       alert(`Group: ${dataPoint.group}, Date: ${dataPoint.date}, Value: ${dataPoint.value}`);
     }
+  }
+
+  addCustomLineStyles(): void {
+    const dataGroups = this.chart.model.getDisplayData().map((d: ChartData) => d.group);
+    const lines = d3.selectAll('path.line').nodes();
+
+    lines.forEach((line, index) => {
+      const lineElement = line as SVGPathElement;
+      const group = dataGroups[index];
+      if (group === 'Load') {
+        lineElement.classList.add('line-load');
+        d3.select(lineElement).style('stroke-dasharray', '0');
+      } else if (group === 'Success') {
+        lineElement.classList.add('line-success');
+        d3.select(lineElement).style('stroke-dasharray', '5,5');
+      } else if (group === 'Error') {
+        lineElement.classList.add('line-error');
+        d3.select(lineElement).style('stroke-dasharray', '10,10');
+      }
+    });
   }
 
   toggleTheme(): void {
