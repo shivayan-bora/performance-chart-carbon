@@ -85,7 +85,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
       .pipe(
         switchMap(() => {
           console.log('Fetching data');
-          return fetch('https://performance-chart-backend.adaptable.app/data').then(response => response.json());
+          return fetch('https://pc-be.adaptable.app/data').then(response => response.json());
         })
       )
       .subscribe(
