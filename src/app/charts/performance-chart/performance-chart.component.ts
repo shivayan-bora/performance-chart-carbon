@@ -114,6 +114,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
           this.data.push(formattedLoadData, formattedErrorData, formattedSuccessData);
           this.chart.model.setData(this.data);
           this.addCustomLineStyles();
+          this.addAccessibilityFeatures();
           this.addClickListeners();
           console.log('Fetched data:', this.data);
         },
@@ -147,16 +148,48 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
       const lineElement = line as SVGPathElement;
       const group = dataGroups[index];
       if (group === 'Load') {
-        lineElement.classList.add('line-load');
         d3.select(lineElement).style('stroke-dasharray', '0');
       } else if (group === 'Success') {
-        lineElement.classList.add('line-success');
         d3.select(lineElement).style('stroke-dasharray', '5,5');
       } else if (group === 'Error') {
-        lineElement.classList.add('line-error');
         d3.select(lineElement).style('stroke-dasharray', '10,10');
       }
     });
+  }
+
+  addAccessibilityFeatures(): void {
+    setTimeout(() => {
+      const points = d3.selectAll('.dot').nodes();
+      points.forEach(point => {
+        const pointElement = point as HTMLElement & { __data__: any };
+        const data = pointElement.__data__;
+        pointElement.setAttribute('tabindex', '0');
+        pointElement.setAttribute('role', 'button');
+        pointElement.setAttribute('aria-label', `Data point: ${data.group} at ${new Date(data.date).toLocaleString()} with value ${data.value}`);
+
+        pointElement.addEventListener('focus', (event) => {
+          const target = event.target as HTMLElement & { __data__: any };
+          const mouseEventInit: MouseEventInit = {
+            bubbles: true,
+            clientX: target.getBoundingClientRect().left,
+            clientY: target.getBoundingClientRect().top
+          };
+          target.dispatchEvent(new MouseEvent('mouseover', mouseEventInit));
+        });
+
+        pointElement.addEventListener('blur', (event) => {
+          const target = event.target as HTMLElement & { __data__: any };
+          target.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+        });
+
+        pointElement.addEventListener('keydown', (event) => {
+          if (event.key === 'Escape') {
+            const target = event.target as HTMLElement & { __data__: any };
+            target.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+          }
+        });
+      });
+    }, 500); // Delay to ensure points are rendered
   }
 
   toggleTheme(): void {
