@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, Renderer2 } from '@angular/core';
-import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes } from '@carbon/charts';
+import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes, LineEvent } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import { interval, Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -22,6 +22,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
   data: ChartTabularData = [];
   isDarkTheme: boolean = false;
   subscription!: Subscription;
+  zoomDuration: number = 25 * 1000; // 25 seconds
 
   constructor(private renderer: Renderer2) { }
 
@@ -52,7 +53,13 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
       tooltip: {
         showTotal: true // Ensures the tooltip is descriptive
       },
-      theme: this.isDarkTheme ? 'g100' : 'g10' // g100 for dark theme, g10 for light theme
+      theme: this.isDarkTheme ? 'g100' : 'g10', // g100 for dark theme, g10 for light theme,
+      zoomBar: {
+        top: {
+          enabled: true,
+          type: 'graph_view'
+        }
+      }
     };
   }
 
@@ -67,7 +74,9 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
 
       // Set ARIA labels and roles for accessibility
       chartContainer.setAttribute('role', 'img');
-      chartContainer.setAttribute('aria-label', 'Live line chart displaying load, success, and error data over time');
+      chartContainer.setAttribute('aria-label', 'Live line chart displaying performance and load testing data over time');
+
+      this.chart.services.events.addEventListener(LineEvent.POINT_CLICK, (e: CustomEvent) => this.handleClick(e));
     }
 
     // Start fetching data
@@ -89,13 +98,13 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
     console.log('Starting data fetch');
     this.subscription = interval(5000)
       .pipe(
-        switchMap(() => {
+        switchMap(async () => {
           console.log('Fetching data');
           return fetch('https://pc-be.adaptable.app/data').then(response => response.json());
         })
       )
-      .subscribe(
-        newData => {
+      .subscribe({
+        next: newData => {
           const formattedLoadData = {
             group: 'Load',
             date: new Date(newData.load.date),
@@ -112,32 +121,33 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
             value: newData.success.value
           };
           this.data.push(formattedLoadData, formattedErrorData, formattedSuccessData);
+
           this.chart.model.setData(this.data);
+          this.updateZoomDomain();
           this.addCustomLineStyles();
-          this.addAccessibilityFeatures();
-          this.addClickListeners();
           console.log('Fetched data:', this.data);
         },
-        error => {
+        error: error => {
           console.error('Error fetching data:', error);
         }
-      );
+      });
   }
 
-  addClickListeners(): void {
-    const points = document.querySelectorAll('.dot');
-    points.forEach(point => {
-      point.removeEventListener('click', this.handleClick);
-      point.addEventListener('click', this.handleClick.bind(this));
+  updateZoomDomain(): void {
+    const endDate = new Date();
+    const startDate = new Date(endDate.getTime() - this.zoomDuration); // 25 seconds sliding window
+    this.chart.model.setOptions({
+      zoomBar: {
+        top: {
+          initialZoomDomain: [startDate, endDate]
+        }
+      }
     });
   }
 
-  handleClick(event: Event): void {
-    const target = event.target as any;
-    const dataPoint = target.__data__;
-    if (dataPoint) {
-      alert(`Group: ${dataPoint.group}, Date: ${dataPoint.date}, Value: ${dataPoint.value}`);
-    }
+  handleClick(event: CustomEvent): void {
+    const dataPoint = event?.detail?.datum;
+    alert(`Group: ${dataPoint.group}, Date: ${dataPoint.date}, Value: ${dataPoint.value}`);
   }
 
   addCustomLineStyles(): void {
@@ -155,41 +165,6 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
         d3.select(lineElement).style('stroke-dasharray', '10,10');
       }
     });
-  }
-
-  addAccessibilityFeatures(): void {
-    setTimeout(() => {
-      const points = d3.selectAll('.dot').nodes();
-      points.forEach(point => {
-        const pointElement = point as HTMLElement & { __data__: any };
-        const data = pointElement.__data__;
-        pointElement.setAttribute('tabindex', '0');
-        pointElement.setAttribute('role', 'button');
-        pointElement.setAttribute('aria-label', `Data point: ${data.group} at ${new Date(data.date).toLocaleString()} with value ${data.value}`);
-
-        pointElement.addEventListener('focus', (event) => {
-          const target = event.target as HTMLElement & { __data__: any };
-          const mouseEventInit: MouseEventInit = {
-            bubbles: true,
-            clientX: target.getBoundingClientRect().left,
-            clientY: target.getBoundingClientRect().top
-          };
-          target.dispatchEvent(new MouseEvent('mouseover', mouseEventInit));
-        });
-
-        pointElement.addEventListener('blur', (event) => {
-          const target = event.target as HTMLElement & { __data__: any };
-          target.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
-        });
-
-        pointElement.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') {
-            const target = event.target as HTMLElement & { __data__: any };
-            target.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
-          }
-        });
-      });
-    }, 500); // Delay to ensure points are rendered
   }
 
   toggleTheme(): void {
