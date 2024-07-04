@@ -3,3 +3,12 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+rect.zoom-bg {
+  fill: purple !important;
+}
+
+path.zoom-graph-area-unselected {
+  fill: white !important;
+  stroke: black !important;
+}

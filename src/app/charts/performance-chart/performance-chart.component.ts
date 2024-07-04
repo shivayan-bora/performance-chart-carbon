@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, Renderer2 } from '@angular/core';
-import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes, LineEvent, ToolbarControlTypes } from '@carbon/charts';
+import { CommonModule } from '@angular/common';
+import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes, LineEvent, ToolbarControlTypes, ZoomDomainEvent, getDomain } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import { interval, Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -15,15 +16,17 @@ interface ChartData {
   selector: 'app-performance-chart',
   standalone: true,
   templateUrl: './performance-chart.component.html',
-  styleUrls: ['./performance-chart.component.css']
+  styleUrls: ['./performance-chart.component.css'],
+  imports: [CommonModule]
 })
 export class PerformanceChartComponent implements OnInit, OnDestroy {
   chart!: LineChart;
   data: ChartTabularData = [];
   isDarkTheme: boolean = false;
   subscription!: Subscription;
-  zoomDuration: number = 25 * 1000; // 25 seconds
+  zoomDuration: number = 25 * 1000; // 25 seconds in milliseconds
   showTable: boolean = false;
+  autoSliding: boolean = true;
 
   constructor(private renderer: Renderer2) { }
 
@@ -76,6 +79,13 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
             text: 'Toggle Table',
             title: 'Show or hide data table',
             clickFunction: () => this.toggleTable()
+          },
+          {
+            type: 'Custom',
+            id: 'toggleSlidingWindow',
+            text: 'Toggle Sliding Window',
+            title: 'Toggle automatic sliding window',
+            clickFunction: () => this.toggleSlidingWindow()
           }
         ]
       }
@@ -96,6 +106,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
       chartContainer.setAttribute('aria-label', 'Live line chart displaying performance and load testing data over time');
 
       this.chart.services.events.addEventListener(LineEvent.POINT_CLICK, (e: CustomEvent) => this.handleClick(e));
+      this.chart.services.events.addEventListener(ZoomDomainEvent.CHANGE, () => this.handleZoomChange());
     }
 
     // Start fetching data
@@ -154,7 +165,9 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
     const focusedElementId = document.activeElement?.id;
 
     this.chart.model.setData(this.data);
-    this.updateZoomDomain();
+    if (this.autoSliding) {
+      this.updateZoomDomain();
+    }
     this.addCustomLineStyles();
 
     if (focusedElementId) {
@@ -169,7 +182,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
 
   updateZoomDomain(): void {
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - this.zoomDuration); // 25 seconds sliding window
+    const startDate = new Date(endDate.getTime() - this.zoomDuration); // sliding window based on zoomDuration in milliseconds
     this.chart.model.setOptions({
       zoomBar: {
         top: {
@@ -177,6 +190,16 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
         }
       }
     });
+  }
+
+  handleZoomChange(): void {
+    const zoomBarState = this.chart.services.zoom.model.get('zoomDomain');
+    if (zoomBarState) {
+      this.zoomDuration = zoomBarState[1].getTime() - zoomBarState[0].getTime(); // keep duration in milliseconds
+      if (this.autoSliding) {
+        this.updateZoomDomain();
+      }
+    }
   }
 
   handleClick(event: CustomEvent): void {
@@ -213,5 +236,12 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
 
   toggleTable(): void {
     this.showTable = !this.showTable;
+  }
+
+  toggleSlidingWindow(): void {
+    this.autoSliding = !this.autoSliding;
+    if (this.autoSliding) {
+      this.updateZoomDomain();
+    }
   }
 }
