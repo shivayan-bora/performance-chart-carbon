@@ -122,15 +122,30 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
           };
           this.data.push(formattedLoadData, formattedErrorData, formattedSuccessData);
 
-          this.chart.model.setData(this.data);
-          this.updateZoomDomain();
-          this.addCustomLineStyles();
+          this.updateChart();
           console.log('Fetched data:', this.data);
         },
         error: error => {
           console.error('Error fetching data:', error);
         }
       });
+  }
+
+  updateChart(): void {
+    const focusedElementId = document.activeElement?.id;
+
+    this.chart.model.setData(this.data);
+    this.updateZoomDomain();
+    this.addCustomLineStyles();
+
+    if (focusedElementId) {
+      setTimeout(() => {
+        const focusedElement = document.getElementById(focusedElementId);
+        if (focusedElement) {
+          focusedElement.focus();
+        }
+      }, 0);
+    }
   }
 
   updateZoomDomain(): void {
