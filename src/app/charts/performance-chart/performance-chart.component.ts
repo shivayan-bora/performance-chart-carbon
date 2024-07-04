@@ -1,5 +1,4 @@
 import { Component, OnInit, OnDestroy, Renderer2 } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes, LineEvent, ToolbarControlTypes, ZoomDomainEvent, getDomain } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import { interval, Subscription } from 'rxjs';
@@ -17,7 +16,7 @@ interface ChartData {
   standalone: true,
   templateUrl: './performance-chart.component.html',
   styleUrls: ['./performance-chart.component.css'],
-  imports: [CommonModule]
+  imports: []
 })
 export class PerformanceChartComponent implements OnInit, OnDestroy {
   chart!: LineChart;
