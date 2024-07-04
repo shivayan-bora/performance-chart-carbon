@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, Renderer2 } from '@angular/core';
-import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes, LineEvent } from '@carbon/charts';
+import { LineChart, LineChartOptions, ChartTabularData, ScaleTypes, LineEvent, ToolbarControlTypes } from '@carbon/charts';
 import '@carbon/charts/styles.css';
 import { interval, Subscription } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
@@ -23,6 +23,7 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
   isDarkTheme: boolean = false;
   subscription!: Subscription;
   zoomDuration: number = 25 * 1000; // 25 seconds
+  showTable: boolean = false;
 
   constructor(private renderer: Renderer2) { }
 
@@ -59,6 +60,24 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
           enabled: true,
           type: 'graph_view'
         }
+      },
+      toolbar: {
+        enabled: true,
+        controls: [
+          {
+            type: ToolbarControlTypes.ZOOM_IN
+          },
+          {
+            type: ToolbarControlTypes.ZOOM_OUT
+          },
+          {
+            type: 'Custom',
+            id: 'toggleTable',
+            text: 'Toggle Table',
+            title: 'Show or hide data table',
+            clickFunction: () => this.toggleTable()
+          }
+        ]
       }
     };
   }
@@ -190,5 +209,9 @@ export class PerformanceChartComponent implements OnInit, OnDestroy {
     } else {
       this.renderer.removeClass(document.body, 'dark');
     }
+  }
+
+  toggleTable(): void {
+    this.showTable = !this.showTable;
   }
 }
